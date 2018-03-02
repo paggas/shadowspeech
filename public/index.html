@@ -10,71 +10,333 @@
 <body>
 	<h1 align ="center"> Shadow Speech </h1>
 		<ul id = "playlist">
-			<li id = "track1">Audio #1
-					<button type="button" class="btn btn-default btn-sm" onclick = "playSong('track1')">
-							<span class="glyphicon glyphicon-play"></span> Play
+			<li>Audio #1
+					<button type="button" id = "track1" class="btn btn-default btn-sm glyphicon glyphicon-play" onclick = "playSong(this)">
+							<!-- <span class="glyphicon glyphicon-play"></span> Play -->
 					</button>
-					<button type="button" class="btn btn-default btn-sm focus{outline:none} active{background-color:#333; outline: none; box-shadow: none;}" onclick = "stopSong()">
+					<!-- <button type="button" class="btn btn-default btn-sm " onclick = "stopSong()">
 							<span class="glyphicon glyphicon-stop"></span> Stop
+					</button> --> 
+					<button type="button" id = "track1" class="btn btn-danger btn-sm glyphicon glyphicon-record" onclick = "toggleRecording(this)">
 					</button>
 			</li>
-			<li id = "track2">Audio #2
-					<button type="button" class="btn btn-default btn-sm" onclick = "playSong('track2')">
-							<span class="glyphicon glyphicon-play"></span> Play
+			<li>Audio #2
+					<button type="button"  id = "track2" class="btn btn-default btn-sm glyphicon glyphicon-play" onclick = "playSong(this)">
+							<!-- <span class="glyphicon glyphicon-play"></span> Play -->
 					</button>
-					<button type="button" class="btn btn-default btn-sm " onclick = "stopSong()">
+					<!-- <button type="button" class="btn btn-default btn-sm " onclick = "stopSong()">
 							<span class="glyphicon glyphicon-stop"></span> Stop
+					</button>  -->
+					<button type="button"  id = "track2" class="btn btn-danger btn-sm glyphicon glyphicon-record" onclick = "toggleRecording(this)">
 					</button>
 			</li>
-			<li id = "track3">Audio #3
-					<button type="button" class="btn btn-default btn-sm" onclick = "playSong('track3')">
-							<span class="glyphicon glyphicon-play"></span> Play
+			<li>Audio #3
+					<button type="button"  id = "track3" class="btn btn-default btn-sm glyphicon glyphicon-play" onclick = "playSong(this)">
+							<!-- <span class="glyphicon glyphicon-play"></span> Play -->
 					</button>
-					<button type="button" class="btn btn-default btn-sm " onclick = "stopSong()">
+					<!-- <button type="button" class="btn btn-default btn-sm " onclick = "stopSong()">
 							<span class="glyphicon glyphicon-stop"></span> Stop
+					</button> -->
+					<button type="button" id = "track3" class="btn btn-danger btn-sm glyphicon glyphicon-record " onclick = "toggleRecording(this)">
 					</button>
 			</li>
-			<li id = "track4">Audio #4
-					<button type="button" class="btn btn-default btn-sm" onclick = "playSong('track4')">
-							<span class="glyphicon glyphicon-play"></span> Play
+			<li>Audio #4
+					<button type="button"  id = "track4" class="btn btn-default btn-sm glyphicon glyphicon-play" onclick = "playSong(this)">
+							<!-- <span class="glyphicon glyphicon-play"></span> Play -->
 					</button>
-					<button type="button" class="btn btn-default btn-sm" onclick = "stopSong()">
+					<!-- <button type="button" class="btn btn-default btn-sm" onclick = "stopSong()">
 							<span class="glyphicon glyphicon-stop"></span> Stop
+					</button> -->
+					<button type="button"  id = "track4" class="btn btn-danger btn-sm glyphicon glyphicon-record " onclick = "toggleRecording(this)">
 					</button>
 			</li>
 		</ul>
+
+		<!-- <button type="button" id = "visualize" class="btn btn-default btn-sm" onclick = "draw()">visualize</button> -->
+
+		<canvas id="wavecanvas" width="800" height="180"></canvas>
+
+		<h2>Stored Recordings</h2>
+		<ul id="recordingslist"></ul>
+		
+		
 
 	<script src="https://www.html5rocks.com/en/tutorials/webaudio/intro/js/buffer-loader.js"></script>
 	
 
 	<script>
 
-		context = new AudioContext();
-		source = null;
+		// Expose globally your audio_context, the recorder instance and audio_stream
+		var audio_context;
+		var source = null;
+        var recorder;
+		var audio_stream;
+		var analyser;
+		var myCanvas;
+		var canvas;
+		var drawVisual;
+		var auIdOld = null;
+		var auIdPrev = null;
+		var PrevSong;
+		var prevRec;
 
-		function playSong(track){
+        /**
+         * Patch the APIs for every browser that supports them and check
+         * if getUserMedia is supported on the browser. 
+         * 
+         */
+        function Initialize() {
+            try {
+                // Monkeypatch for AudioContext, getUserMedia and URL
+                window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia;
+                window.URL = window.URL || window.webkitURL;
+
+                // Store the instance of AudioContext globally
+				audio_context = new AudioContext;
+				
+				canvas = document.getElementById('wavecanvas');
+				myCanvas = canvas.getContext("2d");
+
+				myCanvas.fillStyle = 'rgb(255,255,255)';
+				myCanvas.fillRect(0, 0, canvas.width, canvas.height);
+
+				
+                console.log('Audio context is ready !');
+                console.log('navigator.getUserMedia ' + (navigator.getUserMedia ? 'available.' : 'not present!'));
+            } catch (e) {
+                alert('No web audio support in this browser!');
+            }
+        }
+
+		function playSong(e){
+
+			if (e.classList.contains("glyphicon-play")) {
+				if(source!=null && !source.pause){
+					source.stop();
+					console.log(e.className)
+					prevSong.className= "btn btn-default btn-sm glyphicon glyphicon-play";
+			}
+				bufferLoader = new BufferLoader(
+					audio_context,
+					[
+					'audio/'+e.id+'.mp3'
+					],
+					finishedLoading
+				);
+				bufferLoader.load();
+				e.className= "btn btn-default btn-sm glyphicon glyphicon-stop";
+
+			}else{
+				source.stop();
+				e.className= "btn btn-default btn-sm glyphicon glyphicon-play";
+			}
+
+			prevSong = e
+		}
+
+		// function stopSong(){
+		// 	source.stop();
+		// }
+
+		function finishedLoading(bufferList){
+			source = audio_context.createBufferSource();
+			source.buffer = bufferList[0];
+			source.connect(audio_context.destination);
+			source.start(0);
+		}
+
+
+		/**
+         * Starts the recording process by requesting the access to the microphone.
+         * Then, if granted proceed to initialize the library and store the stream.
+         *
+         * It only stops when the method stopRecording is triggered and creates a file.
+         */
+		function toggleRecording( e ) {
+			if (e.classList.contains("glyphicon-stop")) {
+				// stop recording and call function to create file
+				recorder && recorder.stop();
+				console.log('Stopped recording.');
+				audio_stream.getAudioTracks()[0].stop();
+				source.stop();
+    			createRecording(e.id)
+				e.className= "btn btn-danger btn-sm glyphicon glyphicon-record";
+			} else {
+				if(source!=null && !source.pause){
+					source.stop();
+					audio_stream.getAudioTracks()[0].stop();
+					console.log(e.className)
+					prevRec.className= "btn btn-danger btn-sm glyphicon glyphicon-record";
+				}
+				navigator.getUserMedia({ audio: true }, function (stream) {
+                // Expose the stream to be accessible globally
+                audio_stream = stream;
+                // Create the MediaStreamSource for the Recorder library
+                var input = audio_context.createMediaStreamSource(stream);
+				console.log('Media stream succesfully created');
+
+                // Initialize the Recorder Library
+                recorder = new Recorder(input);
+                console.log('Recorder initialised');
+
+                // Start recording !
+                recorder && recorder.record();
+
+				console.log('Recording...');
+            }, function (e) {
+                console.error('No live audio input: ' + e);
+			});
 			bufferLoader = new BufferLoader(
-				context,
+				audio_context,
 				[
-				'audio/'+track+'.mp3'
+				'audio/'+e.id+'.mp3'
 				],
 				finishedLoading
 			);
 			bufferLoader.load();
+			e.className= "btn btn-danger btn-sm glyphicon glyphicon-stop";
+    		}
+			prevRec = e;
 		}
 
-		function stopSong(){
-			source.stop();
+		function createRecording(name){
+			recorder && recorder.exportWAV(function (blob) {
+
+				var url = URL.createObjectURL(blob);
+                var li = document.createElement('li');
+				var au = document.createElement('audio');
+				var hf = document.createElement('a');
+				var btv = document.createElement('button');
+				var bt = document.createElement('button');
+
+				au.controls = true;
+				au.src = url;
+				au.id = new Date().toISOString()+"-"+ name;
+				hf.href = url;
+				// Important:
+				// Change the format of the file according to the mimetype
+				// e.g for audio/wav the extension is .wav 
+				//     for audio/mpeg (mp3) the extension is .mp3
+				hf.download = new Date().toISOString()+"-"+ name + '.wav';
+				hf.className = 'btn btn-default btn-sm'
+				var t = document.createTextNode("Download");       // Create a text node
+				hf.appendChild(t); 
+				btv.className = 'btn btn-default btn-sm'
+				btv.id = "watch";
+				var t = document.createTextNode("Visualize");       // Create a text node
+				btv.appendChild(t); 
+				btv.onclick = function(event){
+					visualize(event,au.id)
+				}
+				bt.className = 'btn btn-danger btn-sm'
+				bt.id = url
+				var t = document.createTextNode("Delete");       // Create a text node
+				bt.appendChild(t); 
+				bt.onclick = function(event){
+					deleteRec(event)
+				}
+				li.id = url
+				li.appendChild(au);
+				li.appendChild(hf);
+				li.appendChild(btv);
+				li.appendChild(bt);
+				recordingslist.appendChild(li);
+
+                recorder.clear();
+				}, "audio/wav");
 		}
 
-		function finishedLoading(bufferList){
-			source = context.createBufferSource();
-			source.buffer = bufferList[0];
-			source.connect(context.destination);
-			source.start(0);
+		function deleteRec(e){
+			var url = e.target.id;
+			// console.log(url)
+			var elem = document.getElementById(url);
+			elem.parentNode.removeChild(elem);
+			URL.revokeObjectURL(url);
 		}
-	</script>
 
+
+
+		function visualize(e,auId){
+
+			var audio = document.getElementById(auId);
+			if (e.target.id == "watch"){
+
+				if(auIdOld != auId){
+					audioSrc = audio_context.createMediaElementSource(audio);
+					analyser = audio_context.createAnalyser();
+					audioSrc.connect(analyser);
+					audioSrc.connect(audio_context.destination);
+				}
+				
+				analyser.fftSize = 2048;
+
+				audio.play();
+				
+
+				draw();
+				e.target.textContent = 'Pause Visualizing';
+				e.target.id = 'DontWatch';
+			}else{
+				console.log(e.target.id)
+				audio.pause();
+				cancelAnimationFrame(drawVisual);
+				e.target.textContent = 'Visualize';
+				e.target.id = 'watch';
+			}
+			auIdOld = auId
+
+		}
+
+
+		function draw() {
+			drawVisual = requestAnimationFrame(draw);
+
+			var bufferLength = analyser.frequencyBinCount; 
+			var dataArray = new Uint8Array(bufferLength);
+  
+  			analyser.getByteTimeDomainData(dataArray);
+  
+			myCanvas.fillStyle = 'rgb(255,255,255)';
+			myCanvas.fillRect(0, 0, canvas.width, canvas.height);
+			myCanvas.lineWidth = 2;
+			myCanvas.strokeStyle = 'rgb(40, 95, 95)';
+			myCanvas.beginPath();
+  
+  			var sliceWidth = canvas.width * 1.0 / bufferLength;
+  			var x = 0;
+
+
+			for(var i = 0; i < bufferLength; i++) {
+			
+				var v = dataArray[i] / 128.0;
+				var y = v * canvas.height/2;
+
+				if(i === 0) {
+				myCanvas.moveTo(x, y);
+				} else {
+				myCanvas.lineTo(x, y);
+				}
+
+				x += sliceWidth;
+			};
+
+  			myCanvas.lineTo(canvas.width, canvas.height/2);
+      		myCanvas.stroke();
+		};
+
+
+        // Initialize everything once the window loads
+        window.onload = function(){
+            // Prepare and check if requirements are filled
+            Initialize();
+
+		}
+    </script>
+
+    <!-- Include the recorder.js library from a local copy -->
+    <script src="recorder.js"></script>
 </body>
 </html>
+
 
